@@ -17,7 +17,12 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp \
-    dynodb.cpp
+    dynodb.cpp \
+    predicate.cpp \
+    predicateelement.cpp
 
 HEADERS += \
-    dynodb.h
+    dynodb.h \
+    predicate.h \
+    predicateelement.h \
+    datatypes.h

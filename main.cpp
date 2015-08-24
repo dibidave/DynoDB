@@ -4,6 +4,7 @@
 #include <QtSql>
 
 #include "dynodb.h"
+#include "predicate.h"
 
 int main(int argc, char *argv[])
 {
@@ -40,10 +41,27 @@ int main(int argc, char *argv[])
             break;
         }
 
-        if(!dynoDB.addPredicate(input))
+        Predicate* predicate = new Predicate(input);
+
+        if(predicate->isValid())
         {
-            cout << "Error adding predicate." << endl;
+            quint32 id = dynoDB.addPredicate(predicate);
+
+            if(id == 0)
+            {
+                cout << "Error adding predicate." << endl;
+            }
+            else
+            {
+                cout << "Created Gibly Id " << id << " parsed as : " << predicate->toString() << endl;
+            }
         }
+        else
+        {
+            cout << "Error parsing predicate." << endl;
+        }
+
+        predicate->deleteLater();
     }
 
     return 0;
