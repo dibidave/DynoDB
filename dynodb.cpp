@@ -68,8 +68,9 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
             return 0;
         }
     }
+    // Otherwise if we are defining a new literal
     else if(firstPredicateElement->getId() > LITERAL &&
-            firstPredicateElement->getId() < MAX_LITERAL)
+            firstPredicateElement->getId() < MAX_DATA_TYPE)
     {
         // This must be a binary predicate
         if(predicate->getNumElements() != 2)
@@ -96,27 +97,7 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
             return 0;
         }
     }
-    else if(isClass(firstPredicateElement->getId()))
-    {
-        if(!hasTable(firstPredicateElement->getId()))
-        {
-            bool createdTable = makeClassTable(firstPredicateElement->getId());
-
-            if(!createdTable)
-            {
-                deleteGibly(id);
-                return 0;
-            }
-        }
-
-        bool createdInstance = createInstance(firstPredicateElement->getId(), id);
-
-        if(!createdInstance)
-        {
-            deleteGibly(id);
-            return 0;
-        }
-    }
+    // Otherwise if we are defining a literal relationship
     else if(isLiteral(firstPredicateElement->getId()))
     {
         // This must be a binary predicate
@@ -148,6 +129,28 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
         bool addedRelationship = addRelationship(giblyPredicateElement->getId(), firstPredicateElement->getId(), literalPredicateElement->getLiteral());
 
         if(!addedRelationship)
+        {
+            deleteGibly(id);
+            return 0;
+        }
+    }
+    // Otherwise if we are creating an instance of a class
+    else if(isClass(firstPredicateElement->getId()))
+    {
+        if(!hasTable(firstPredicateElement->getId()))
+        {
+            bool createdTable = makeClassTable(firstPredicateElement->getId());
+
+            if(!createdTable)
+            {
+                deleteGibly(id);
+                return 0;
+            }
+        }
+
+        bool createdInstance = createInstance(firstPredicateElement->getId(), id);
+
+        if(!createdInstance)
         {
             deleteGibly(id);
             return 0;
@@ -241,10 +244,63 @@ bool DynoDB::initialize()
         {
             return false;
         }
-    }
 
-    createLiteral(NAME, "Name", STRING);
-    createLiteral(HAS_TABLE, "HasTable", BOOL);
+        QString createRelationTableStatement =
+                "CREATE TABLE `%1` ("
+                "Id INT PRIMARY KEY, "
+                "`%2` INT,"
+                "`%3` BOOL)";
+
+        createRelationTableStatement = createRelationTableStatement
+                .arg(RELATION)
+                .arg(CLASS)
+                .arg(IS_COLUMN);
+
+        database.exec(createRelationTableStatement);
+
+        if(database.lastError().type() != QSqlError::NoError)
+        {
+            return false;
+        }
+
+        quint16 builtInDataTypeIndex = 0;
+        BuiltInDataType builtInDataType = BuiltInDataTypeValues[builtInDataTypeIndex];
+
+        while(builtInDataType != MAX_DATA_TYPE)
+        {
+            QString insertGiblyStatement =
+                    "INSERT INTO `%1` (Id) "
+                    "VALUES (%2)";
+
+            insertGiblyStatement = insertGiblyStatement
+                    .arg(GIBLY)
+                    .arg(builtInDataType);
+
+            database.exec(insertGiblyStatement);
+
+            if(database.lastError().type() != QSqlError::NoError)
+            {
+                return false;
+            }
+
+            if(!createClass(builtInDataType, BuiltInDataTypeNames[builtInDataType]))
+            {
+                return false;
+            }
+
+            builtInDataType = BuiltInDataTypeValues[++builtInDataTypeIndex];
+        }
+
+        createLiteral(NAME, BuiltInDataTypeNames[NAME], STRING);
+        createLiteral(HAS_TABLE, BuiltInDataTypeNames[HAS_TABLE], BOOL);
+        createLiteral(IS_COLUMN, BuiltInDataTypeNames[IS_COLUMN], BOOL);
+        registerRelationshipType(CLASS, NAME);
+        registerRelationshipType(LITERAL, NAME);
+        registerRelationshipType(CLASS, HAS_TABLE);
+        registerRelationshipType(RELATION, IS_COLUMN);
+        registerRelationshipType(RELATION, CLASS);
+        registerRelationshipType(INSTANCE, CLASS);
+    }
 
     return true;
 }
@@ -462,6 +518,14 @@ bool DynoDB::addRelationship(quint32 id, quint32 literalId, QVariant literal)
 {
     quint32 classId = getClass(id);
 
+    if(!relationshipTypeExists(classId, literalId))
+    {
+        if(!registerRelationshipType(classId, literalId))
+        {
+            return false;
+        }
+    }
+
     BuiltInDataType literalType = getLiteralType(literalId);
 
     if(!hasColumn(classId, literalId))
@@ -600,6 +664,52 @@ bool DynoDB::addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataTy
     }
 
     database.exec(addColumnStatement);
+
+    if(database.lastError().type() != QSqlError::NoError)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool DynoDB::relationshipTypeExists(quint32 classId, quint32 literalId)
+{
+    QString checkRelationshipStatement =
+            "SELECT Id FROM `%1` "
+            "WHERE Id = %2 AND `%3` = %4";
+
+    checkRelationshipStatement = checkRelationshipStatement
+            .arg(RELATION)
+            .arg(classId)
+            .arg(CLASS)
+            .arg(literalId);
+
+    QSqlQuery checkRelationshipQuery = database.exec(checkRelationshipStatement);
+
+    if(checkRelationshipQuery.size() > 0)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool DynoDB::registerRelationshipType(quint32 classId, quint32 literalId, bool isColumn)
+{
+    QString registerRelationshipStatement =
+            "INSERT INTO `%1` (Id, `%2`, `%3`) "
+            "VALUES (%4, %5, %6)";
+
+    registerRelationshipStatement = registerRelationshipStatement
+            .arg(RELATION)
+            .arg(CLASS)
+            .arg(IS_COLUMN)
+            .arg(classId)
+            .arg(literalId)
+            .arg(isColumn);
+
+    database.exec(registerRelationshipStatement);
 
     if(database.lastError().type() != QSqlError::NoError)
     {

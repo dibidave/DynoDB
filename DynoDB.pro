@@ -9,7 +9,7 @@ QT       += core sql
 QT       -= gui
 
 TARGET = DynoDB
-CONFIG   += console
+CONFIG   += console c++11
 
 QTPLUGIN += qsqlmysql
 

@@ -38,6 +38,9 @@ private:
     bool hasColumn(quint32 classId, quint32 columnId);
     bool addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataType);
 
+    bool relationshipTypeExists(quint32 classId, quint32 literalId);
+    bool registerRelationshipType(quint32 classId, quint32 literalId, bool isColumn = true);
+
     bool valid;
     QSqlDatabase database;
 };
