@@ -247,7 +247,7 @@ bool DynoDB::initialize()
 
         QString createRelationTableStatement =
                 "CREATE TABLE `%1` ("
-                "Id INT PRIMARY KEY, "
+                "Id INT, "
                 "`%2` INT,"
                 "`%3` BOOL)";
 
@@ -291,15 +291,51 @@ bool DynoDB::initialize()
             builtInDataType = BuiltInDataTypeValues[++builtInDataTypeIndex];
         }
 
-        createLiteral(NAME, BuiltInDataTypeNames[NAME], STRING);
-        createLiteral(HAS_TABLE, BuiltInDataTypeNames[HAS_TABLE], BOOL);
-        createLiteral(IS_COLUMN, BuiltInDataTypeNames[IS_COLUMN], BOOL);
-        registerRelationshipType(CLASS, NAME);
-        registerRelationshipType(LITERAL, NAME);
-        registerRelationshipType(CLASS, HAS_TABLE);
-        registerRelationshipType(RELATION, IS_COLUMN);
-        registerRelationshipType(RELATION, CLASS);
-        registerRelationshipType(INSTANCE, CLASS);
+        if(!createLiteral(NAME, BuiltInDataTypeNames[NAME], STRING))
+        {
+            return false;
+        }
+
+        if(!createLiteral(HAS_TABLE, BuiltInDataTypeNames[HAS_TABLE], BOOL))
+        {
+            return false;
+        }
+
+        if(!createLiteral(IS_COLUMN, BuiltInDataTypeNames[IS_COLUMN], BOOL))
+        {
+            return false;
+        }
+
+        if(!registerRelationshipType(CLASS, NAME))
+        {
+            return false;
+        }
+
+        if(!registerRelationshipType(LITERAL, NAME))
+        {
+            return false;
+        }
+
+        if(!registerRelationshipType(CLASS, HAS_TABLE))
+        {
+            return false;
+        }
+
+        if(!registerRelationshipType(RELATION, IS_COLUMN))
+        {
+            return false;
+        }
+
+        if(!registerRelationshipType(RELATION, CLASS))
+        {
+            return false;
+        }
+
+        if(!registerRelationshipType(INSTANCE, CLASS))
+        {
+            return false;
+        }
+
     }
 
     return true;
