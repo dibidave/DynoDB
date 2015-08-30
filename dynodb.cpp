@@ -184,7 +184,19 @@ QList<Predicate*> DynoDB::getPredicates(Relation* relation, quint32 giblyId)
 
 Class* DynoDB::getClass(QString name)
 {
-    return 0;
+    //Return corresponding class with id matching the input string
+    QString checkClassTableStatement = "SELECT Id FROM `2` WHERE `4` = `%1`";
+    checkClassTableStatement = checkClassTableStatement.arg(name);
+    QSqlQuery getClassId = database.exec(checkClassTableStatement);
+    if (getClassId.next())
+    {
+        quint32 foundClassId = getClassId.value(0).toInt();
+        Class* foundClass = new Class(foundClassId,name);
+        return foundClass;
+    }
+    else return 0;
+
+
 }
 
 bool DynoDB::initialize()
