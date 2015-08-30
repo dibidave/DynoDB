@@ -165,6 +165,21 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
     return id;
 }
 
+QList<Relation*> DynoDB::getRelations(quint32 giblyId)
+{
+    return QList<Relation*>();
+}
+
+QList<Predicate*> DynoDB::getPredicates(Relation* relation, quint32 giblyId)
+{
+    return QList<Predicate*>();
+}
+
+Class* DynoDB::getClass(QString name)
+{
+    return 0;
+}
+
 bool DynoDB::initialize()
 {
     QString checkGibliesTableStatement =

@@ -8,6 +8,9 @@
 class Predicate;
 class PredicateElement;
 
+#include "class.h"
+#include "relation.h"
+
 class DynoDB
 {
 public:
@@ -17,6 +20,12 @@ public:
              QString password);
 
     quint32 addPredicate(Predicate* predicate);
+
+    QList<Relation*> getRelations(quint32 giblyId);
+    QList<Predicate*> getPredicates(Relation* relation, quint32 giblyId);
+
+    Class* getClass(QString name);
+
 
     bool isValid() const;
 

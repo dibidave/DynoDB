@@ -19,10 +19,16 @@ TEMPLATE = app
 SOURCES += main.cpp \
     dynodb.cpp \
     predicate.cpp \
-    predicateelement.cpp
+    predicateelement.cpp \
+    class.cpp \
+    gibly.cpp \
+    relation.cpp
 
 HEADERS += \
     dynodb.h \
     predicate.h \
     predicateelement.h \
-    datatypes.h
+    datatypes.h \
+    class.h \
+    gibly.h \
+    relation.h
