@@ -6,6 +6,11 @@
 
 DynoDB* DynoDB::instance_ = 0;
 
+DynoDB* DynoDB::getInstance()
+{
+    return instance_;
+}
+
 DynoDB::DynoDB(QString hostName,
                    QString databaseName,
                    QString userName,

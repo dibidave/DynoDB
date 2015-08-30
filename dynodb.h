@@ -15,6 +15,8 @@ class DynoDB
 {
 public:
 
+    static DynoDB* getInstance();
+
     DynoDB(QString hostName,
              QString databaseName,
              QString userName,
@@ -26,7 +28,7 @@ public:
     QList<Relation*> getRelations(quint32 giblyId);
     QList<Predicate*> getPredicates(Relation* relation, quint32 giblyId);
 
-    static Class* getClass(QString name);
+    Class* getClass(QString name);
 
     bool isValid() const;
 

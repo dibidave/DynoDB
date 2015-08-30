@@ -23,11 +23,11 @@ PredicateElement::PredicateElement(QString predicateElementString)
                 predicateElementString.at(predicateElementString.length() - 1) != '\"')
         {
             // Check to see if a class with this name exists
-            Class* dbclass = DynoDB::getClass(predicateElementString);
+            Class* dbclass = DynoDB::getInstance()->getClass(predicateElementString);
 
             if(!dbclass)
             {
-                return false;
+                return;
             }
 
             isLiteral_ = false;
