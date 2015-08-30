@@ -4,6 +4,8 @@
 #include "predicate.h"
 #include "predicateelement.h"
 
+DynoDB* DynoDB::instance_ = 0;
+
 DynoDB::DynoDB(QString hostName,
                    QString databaseName,
                    QString userName,
@@ -23,6 +25,11 @@ DynoDB::DynoDB(QString hostName,
     }
 
     valid = initialize();
+
+    if(valid)
+    {
+        instance_ = this;
+    }
 }
 
 bool DynoDB::isValid() const

@@ -1,5 +1,7 @@
 #include "predicateelement.h"
 
+#include "dynodb.h"
+
 PredicateElement::PredicateElement(QString predicateElementString)
 {
     isValid_ = false;
@@ -15,20 +17,30 @@ PredicateElement::PredicateElement(QString predicateElementString)
     }
     else
     {
-        // This should have double quotes in front and back. If not, it's not valid
-
-        if(predicateElementString.at(0) != '\"'
-            || predicateElementString.at(predicateElementString.length() - 1) != '\"'
-            || predicateElementString.length() < 2)
+        // If this isn't surrounded by quotes, it might be a class
+        if(predicateElementString.length() < 2 ||
+                predicateElementString.at(0) != '\"' ||
+                predicateElementString.at(predicateElementString.length() - 1) != '\"')
         {
-            return;
+            // Check to see if a class with this name exists
+            Class* dbclass = DynoDB::getClass(predicateElementString);
+
+            if(!dbclass)
+            {
+                return false;
+            }
+
+            isLiteral_ = false;
+            id_ = dbclass->getId();
         }
+        else
+        {
+            predicateElementString.remove(0,1);
+            predicateElementString.remove(predicateElementString.length() - 1,1);
 
-        predicateElementString.remove(0,1);
-        predicateElementString.remove(predicateElementString.length() - 1,1);
-
-        isLiteral_ = true;
-        literal_ = predicateElementString;
+            isLiteral_ = true;
+            literal_ = predicateElementString;
+        }
     }
 
     isValid_ = true;

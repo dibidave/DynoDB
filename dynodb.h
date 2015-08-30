@@ -14,22 +14,25 @@ class PredicateElement;
 class DynoDB
 {
 public:
+
     DynoDB(QString hostName,
              QString databaseName,
              QString userName,
              QString password);
 
+    quint32 addPredicate(QString predicateString);
     quint32 addPredicate(Predicate* predicate);
 
     QList<Relation*> getRelations(quint32 giblyId);
     QList<Predicate*> getPredicates(Relation* relation, quint32 giblyId);
 
-    Class* getClass(QString name);
-
+    static Class* getClass(QString name);
 
     bool isValid() const;
 
 private:
+
+    static DynoDB* instance_;
 
     bool initialize();
     bool createInstance(quint32 classId, quint32 instanceId);
