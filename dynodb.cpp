@@ -179,6 +179,8 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
 
 QList<Relation*> DynoDB::getRelations(quint32 giblyId)
 {
+    //QString checkRelationTableStatement = "SELECT Id FROM `8` WHERE ";
+
     return QList<Relation*>();
 }
 
@@ -190,7 +192,7 @@ QList<Predicate*> DynoDB::getPredicates(Relation* relation, quint32 giblyId)
 Class* DynoDB::getClass(QString name)
 {
     //Return corresponding class with id matching the input string
-    QString checkClassTableStatement = "SELECT Id FROM `2` WHERE `4` = `%1`";
+    QString checkClassTableStatement = "SELECT Id FROM `2` WHERE `4` = '%1'";
     checkClassTableStatement = checkClassTableStatement.arg(name);
     QSqlQuery getClassId = database.exec(checkClassTableStatement);
     if (getClassId.next())
