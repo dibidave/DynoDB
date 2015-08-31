@@ -288,12 +288,16 @@ bool DynoDB::initialize()
                 "CREATE TABLE `%1` ("
                 "Id INT, "
                 "`%2` INT,"
-                "`%3` BOOL)";
+                "`%3` BOOL,"
+                "`%4` INT,"
+                "`%5` INT)";
 
         createRelationTableStatement = createRelationTableStatement
                 .arg(RELATION)
                 .arg(CLASS)
-                .arg(IS_COLUMN);
+                .arg(IS_COLUMN)
+                .arg(GROUP)
+                .arg(DIRECTION);
 
         database.exec(createRelationTableStatement);
 
@@ -345,35 +349,35 @@ bool DynoDB::initialize()
             return false;
         }
 
-        if(!registerRelationshipType(CLASS, NAME))
-        {
-            return false;
-        }
+//        if(!registerRelationshipType(NAME,CLASS))
+//        {
+//            return false;
+//        }
 
-        if(!registerRelationshipType(LITERAL, NAME))
-        {
-            return false;
-        }
+//        if(!registerRelationshipType(NAME,LITERAL))
+//        {
+//            return false;
+//        }
 
-        if(!registerRelationshipType(CLASS, HAS_TABLE))
-        {
-            return false;
-        }
+//        if(!registerRelationshipType(HAS_TABLE,CLASS))
+//        {
+//            return false;
+//        }
 
-        if(!registerRelationshipType(RELATION, IS_COLUMN))
-        {
-            return false;
-        }
+//        if(!registerRelationshipType(IS_COLUMN,RELATION))
+//        {
+//            return false;
+//        }
 
-        if(!registerRelationshipType(RELATION, CLASS))
-        {
-            return false;
-        }
+//        if(!registerRelationshipType(CLASS,RELATION))
+//        {
+//            return false;
+//        }
 
-        if(!registerRelationshipType(INSTANCE, CLASS))
-        {
-            return false;
-        }
+//        if(!registerRelationshipType(CLASS,INSTANCE))
+//        {
+//            return false;
+//        }
 
     }
 
@@ -595,7 +599,7 @@ bool DynoDB::addRelationship(quint32 id, quint32 literalId, QVariant literal)
 
     if(!relationshipTypeExists(classId, literalId))
     {
-        if(!registerRelationshipType(classId, literalId))
+        if(!registerRelationshipType(literalId, classId))
         {
             return false;
         }
@@ -770,26 +774,64 @@ bool DynoDB::relationshipTypeExists(quint32 classId, quint32 literalId)
     return false;
 }
 
-bool DynoDB::registerRelationshipType(quint32 classId, quint32 literalId, bool isColumn)
-{
-    QString registerRelationshipStatement =
-            "INSERT INTO `%1` (Id, `%2`, `%3`) "
-            "VALUES (%4, %5, %6)";
 
-    registerRelationshipStatement = registerRelationshipStatement
+bool DynoDB::registerRelationshipType(quint32 relationId,quint32 classId)
+{
+    return registerRelationshipType(relationId,QList<quint32>({classId}));
+}
+
+
+bool DynoDB::registerRelationshipType(quint32 relationId, QList<quint32> classIds)
+{
+    QString largestGroupStatement =
+            "SELECT MAX(`%1`) FROM `%2` WHERE `%3` = %4";
+
+    largestGroupStatement = largestGroupStatement
+            .arg(GROUP)
             .arg(RELATION)
             .arg(CLASS)
-            .arg(IS_COLUMN)
-            .arg(classId)
-            .arg(literalId)
-            .arg(isColumn);
+            .arg(relationId);
 
-    database.exec(registerRelationshipStatement);
+    QSqlQuery largestGroupQuery = database.exec(largestGroupStatement);
 
-    if(database.lastError().type() != QSqlError::NoError)
+    // If this relation doesn't exist already, it's the first one, so the group is 1
+    quint32 groupId = 1;
+
+    // If this relation exists already
+    if(largestGroupQuery.next())
     {
-        return false;
+        // Set the group to be one bigger than the biggest groupId
+        groupId = largestGroupQuery.value(0).toInt() + 1;
     }
+
+    for(qint8 classIndex = 0; classIndex < classIds.size(); classIndex++)
+    {
+
+
+        QString registerRelationshipStatement =
+                "INSERT INTO `%1` (Id, `%2`, `%3`,`%4`,`%5`) "
+                "VALUES (%6, %7,%8, %9, %10)";
+
+        registerRelationshipStatement = registerRelationshipStatement
+                .arg(RELATION)
+                .arg(CLASS)
+                .arg(IS_COLUMN)
+                .arg(GROUP)
+                .arg(DIRECTION)
+                .arg(relationId)
+                .arg(classIds.at(classIndex))
+                .arg(true)
+                .arg(groupId)
+                .arg(classIndex+1);
+
+        database.exec(registerRelationshipStatement);
+
+        if(database.lastError().type() != QSqlError::NoError)
+        {
+            return false;
+        }
+    }
+
 
     return true;
 }

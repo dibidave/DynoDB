@@ -17,6 +17,8 @@ enum BuiltInDataType {
     SUBCLASS = 7,
     RELATION = 8,
     IS_COLUMN = 9,
+    GROUP = 10,
+    DIRECTION = 11,
 
     // Literal classes
     LITERAL = 500,
@@ -38,6 +40,8 @@ BuiltInDataType const BuiltInDataTypeValues[] =
     SUBCLASS,
     RELATION,
     IS_COLUMN,
+    GROUP,
+    DIRECTION,
     LITERAL,
     BOOL,
     INTEGER,
@@ -57,6 +61,8 @@ QMap<BuiltInDataType, QString> const BuiltInDataTypeNames =
     {SUBCLASS, "Subclass"},
     {RELATION, "Relation"},
     {IS_COLUMN, "IsColumn"},
+    {GROUP, "Group"},
+    {DIRECTION, "Direction"},
     {LITERAL, "Literal"},
     {BOOL, "Bool"},
     {INTEGER, "Integer"},

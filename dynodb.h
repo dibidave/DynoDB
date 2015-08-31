@@ -53,7 +53,8 @@ private:
     bool addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataType);
 
     bool relationshipTypeExists(quint32 classId, quint32 literalId);
-    bool registerRelationshipType(quint32 classId, quint32 literalId, bool isColumn = true);
+    bool registerRelationshipType(quint32 relationId,quint32 classId);
+    bool registerRelationshipType(quint32 relationId, QList<quint32> classId);
 
     bool valid;
     QSqlDatabase database;
