@@ -46,16 +46,17 @@ private:
     bool isClass(quint32 id);
     bool isLiteral(quint32 id);
     bool createLiteral(quint32 id, QString literalName, quint32 typeId);
-    bool addRelationship(quint32 id, quint32 literalId, QVariant literal);
+    bool addRelation(quint32 id, quint32 literalId, QVariant literal);
+    bool addRelation(quint32 relationId, QList<quint32> classIds);
     quint32 getClass(quint32 id);
     BuiltInDataType getLiteralType(quint32 id);
     bool hasColumn(quint32 classId, quint32 columnId);
     bool addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataType);
 
-    bool relationshipTypeExists(quint32 relationId, quint32 classId);
-    bool relationshipTypeExists(quint32 relationId, QList<quint32> classIds);
-    bool registerRelationshipType(quint32 relationId,quint32 classId);
-    bool registerRelationshipType(quint32 relationId, QList<quint32> classIds);
+    bool relationTypeExists(quint32 relationId, quint32 classId);
+    bool relationTypeExists(quint32 relationId, QList<quint32> classIds);
+    bool registerRelationType(quint32 relationId,quint32 classId);
+    bool registerRelationType(quint32 relationId, QList<quint32> classIds);
 
     bool valid;
     QSqlDatabase database;

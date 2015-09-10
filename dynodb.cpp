@@ -109,7 +109,7 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
             return 0;
         }
     }
-    // Otherwise if we are defining a literal relationship
+    // Otherwise if we are defining a literal relation
     else if(isLiteral(firstPredicateElement->getId()))
     {
         // This must be a ternary predicate
@@ -138,9 +138,9 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
         // TODO: Probably a cleaner way to do this than deleting the gibly right after creating it
         deleteGibly(id);
 
-        bool addedRelationship = addRelationship(giblyPredicateElement->getId(), firstPredicateElement->getId(), literalPredicateElement->getLiteral());
+        bool addedRelation = addRelation(giblyPredicateElement->getId(), firstPredicateElement->getId(), literalPredicateElement->getLiteral());
 
-        if(!addedRelationship)
+        if(!addedRelation)
         {
             deleteGibly(id);
             return 0;
@@ -197,13 +197,13 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
 
                 }
             }
-            if (!relationshipTypeExists(predicate->getElement(0)->getId(),classIds))
+            if (!relationTypeExists(predicate->getElement(0)->getId(),classIds))
             {
-                registerRelationshipType(predicate->getElement(0)->getId(),classIds);
+                registerRelationType(predicate->getElement(0)->getId(),classIds);
             }
+
+            addRelation(firstPredicateElement->getId(), classIds);
         }
-
-
     }
     else
     {
@@ -239,8 +239,6 @@ Class* DynoDB::getClass(QString name)
         return foundClass;
     }
     else return 0;
-
-
 }
 
 bool DynoDB::initialize()
@@ -388,32 +386,32 @@ bool DynoDB::initialize()
             return false;
         }
 
-//        if(!registerRelationshipType(NAME,CLASS))
+//        if(!registerRelationType(NAME,CLASS))
 //        {
 //            return false;
 //        }
 
-//        if(!registerRelationshipType(NAME,LITERAL))
+//        if(!registerRelationType(NAME,LITERAL))
 //        {
 //            return false;
 //        }
 
-//        if(!registerRelationshipType(HAS_TABLE,CLASS))
+//        if(!registerRelationType(HAS_TABLE,CLASS))
 //        {
 //            return false;
 //        }
 
-//        if(!registerRelationshipType(IS_COLUMN,RELATION))
+//        if(!registerRelationType(IS_COLUMN,RELATION))
 //        {
 //            return false;
 //        }
 
-//        if(!registerRelationshipType(CLASS,RELATION))
+//        if(!registerRelationType(CLASS,RELATION))
 //        {
 //            return false;
 //        }
 
-//        if(!registerRelationshipType(CLASS,INSTANCE))
+//        if(!registerRelationType(CLASS,INSTANCE))
 //        {
 //            return false;
 //        }
@@ -632,13 +630,13 @@ bool DynoDB::isLiteral(quint32 id)
     return false;
 }
 
-bool DynoDB::addRelationship(quint32 id, quint32 literalId, QVariant literal)
+bool DynoDB::addRelation(quint32 id, quint32 literalId, QVariant literal)
 {
     quint32 classId = getClass(id);
 
-    if(!relationshipTypeExists(classId, literalId))
+    if(!relationTypeExists(classId, literalId))
     {
-        if(!registerRelationshipType(literalId, classId))
+        if(!registerRelationType(literalId, classId))
         {
             return false;
         }
@@ -691,6 +689,12 @@ bool DynoDB::addRelationship(quint32 id, quint32 literalId, QVariant literal)
     }
 
     return true;
+}
+
+bool DynoDB::addRelation(quint32 relationId, QList<quint32> classIds)
+{
+
+    return false;
 }
 
 quint32 DynoDB::getClass(quint32 id)
@@ -791,24 +795,24 @@ bool DynoDB::addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataTy
     return true;
 }
 
-bool DynoDB::relationshipTypeExists(quint32 relationId, quint32 classId)
+bool DynoDB::relationTypeExists(quint32 relationId, quint32 classId)
 {
-   return  relationshipTypeExists(relationId, QList<quint32>({classId}));
+   return  relationTypeExists(relationId, QList<quint32>({classId}));
 }
 
-bool DynoDB::relationshipTypeExists(quint32 relationId, QList<quint32> classIds)
+bool DynoDB::relationTypeExists(quint32 relationId, QList<quint32> classIds)
 {
-    QString checkRelationshipStatement = "SELECT DISTINCT `%1` FROM `%2` WHERE Id = %3";
+    QString checkRelationStatement = "SELECT DISTINCT `%1` FROM `%2` WHERE Id = %3";
 
-    checkRelationshipStatement = checkRelationshipStatement
+    checkRelationStatement = checkRelationStatement
             .arg(GROUP)
             .arg(RELATION)
             .arg(relationId);
-    QSqlQuery checkRelationshipQuery = database.exec(checkRelationshipStatement);
+    QSqlQuery checkRelationQuery = database.exec(checkRelationStatement);
 
-    while (checkRelationshipQuery.next())
+    while (checkRelationQuery.next())
     {
-        quint16 currentGroupId = checkRelationshipQuery.value(0).toInt();
+        quint16 currentGroupId = checkRelationQuery.value(0).toInt();
         QString getRelationStatement = "SELECT `%1` FROM `%2` WHERE Id = %3 AND `%4` = %5 ORDER BY `%6`";
         getRelationStatement = getRelationStatement
                 .arg(CLASS)
@@ -825,7 +829,7 @@ bool DynoDB::relationshipTypeExists(quint32 relationId, QList<quint32> classIds)
         else
         {
             bool allMatch = true;
-            for (quint32 currentClassIdIndex = 0; currentClassIdIndex < classIds.size(); currentClassIdIndex++)
+            for (qint32 currentClassIdIndex = 0; currentClassIdIndex < classIds.size(); currentClassIdIndex++)
             {
                 getRelationQuery.next();
                 quint16 getClassId = getRelationQuery.value(0).toInt();
@@ -849,13 +853,13 @@ bool DynoDB::relationshipTypeExists(quint32 relationId, QList<quint32> classIds)
 }
 
 
-bool DynoDB::registerRelationshipType(quint32 relationId,quint32 classId)
+bool DynoDB::registerRelationType(quint32 relationId,quint32 classId)
 {
-    return registerRelationshipType(relationId,QList<quint32>({classId}));
+    return registerRelationType(relationId,QList<quint32>({classId}));
 }
 
 
-bool DynoDB::registerRelationshipType(quint32 relationId, QList<quint32> classIds)
+bool DynoDB::registerRelationType(quint32 relationId, QList<quint32> classIds)
 {
     QString largestGroupStatement =
             "SELECT MAX(`%1`) FROM `%2` WHERE Id = %3";
@@ -881,11 +885,11 @@ bool DynoDB::registerRelationshipType(quint32 relationId, QList<quint32> classId
     {
 
 
-        QString registerRelationshipStatement =
+        QString registerRelationStatement =
                 "INSERT INTO `%1` (Id, `%2`, `%3`,`%4`,`%5`) "
                 "VALUES (%6, %7,%8, %9, %10)";
 
-        registerRelationshipStatement = registerRelationshipStatement
+        registerRelationStatement = registerRelationStatement
                 .arg(RELATION)
                 .arg(CLASS)
                 .arg(IS_COLUMN)
@@ -897,7 +901,7 @@ bool DynoDB::registerRelationshipType(quint32 relationId, QList<quint32> classId
                 .arg(groupId)
                 .arg(classIndex+1);
 
-        database.exec(registerRelationshipStatement);
+        database.exec(registerRelationStatement);
 
         if(database.lastError().type() != QSqlError::NoError)
         {
