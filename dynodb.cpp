@@ -149,6 +149,7 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
     // Otherwise if we are creating an instance of a class
     else if(isClass(firstPredicateElement->getId()))
     {
+        // If this is just a class instantiation
         if (predicate->getNumElements() == 1)
         {
             if(!hasTable(firstPredicateElement->getId()))
@@ -170,6 +171,7 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
                 return 0;
             }
         }
+        // Otherwise this is a relationship being defined
         else
         {
             QList<quint32> classIds;
@@ -691,10 +693,69 @@ bool DynoDB::addRelation(quint32 id, quint32 literalId, QVariant literal)
     return true;
 }
 
-bool DynoDB::addRelation(quint32 relationId, QList<quint32> classIds)
+bool DynoDB::addRelation(quint32 relationId, QList<quint32> giblyIds)
 {
+    // Check whether this table exists
+    if(!hasTable(relationId))
+    {
+        // If it doesn't, make it
+        if(!makeClassTable(relationId))
+        {
+            return false;
+        }
+    }
 
-    return false;
+    // Check whether this table has these columns
+    for(qint32 giblyIndex = 0; giblyIndex < giblyIds.size(); giblyIndex++)
+    {
+        quint32 giblyId = giblyIds.at(giblyIndex);
+        quint32 classId = getClass(giblyId);
+
+        if(!hasColumn(relationId, classId))
+        {
+            if(!addColumn(relationId, classId, GIBLY))
+            {
+                return false;
+            }
+        }
+    }
+
+    QString insertRelationStatement =
+            "INSERT INTO `%1` (%2) VALUES (%3)";
+
+    insertRelationStatement = insertRelationStatement.arg(relationId);
+
+    QString columnNames;
+    QString columnValues;
+
+    for(qint32 giblyIndex = 0; giblyIndex < giblyIds.size(); giblyIndex++)
+    {
+        quint32 giblyId = giblyIds.at(giblyIndex);
+        quint32 classId = getClass(giblyId);
+
+        columnNames.append("`%1`%2");
+        columnNames = columnNames.arg(classId);
+        columnValues.append("%1%2");
+        columnValues = columnValues.arg(giblyId);
+
+        if(giblyIndex != giblyIds.size() - 1)
+        {
+            columnNames.append(", ");
+            columnValues.append(", ");
+        }
+    }
+
+    insertRelationStatement = insertRelationStatement.arg(columnNames);
+    insertRelationStatement = insertRelationStatement.arg(columnValues);
+
+    database.exec(insertRelationStatement);
+
+    if(database.lastError().type() != QSqlError::NoError)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 quint32 DynoDB::getClass(quint32 id)
@@ -782,7 +843,7 @@ bool DynoDB::addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataTy
         addColumnStatement = addColumnStatement.arg("VARCHAR(255)");
         break;
     default:
-        return false;
+        addColumnStatement = addColumnStatement.arg("INT");
     }
 
     database.exec(addColumnStatement);
