@@ -912,9 +912,6 @@ bool DynoDB::relationTypeExists(quint32 relationId, QList<quint32> classIds)
                 return true;
             }
         }
-
-
-
     }
 
     return false;
@@ -951,8 +948,6 @@ bool DynoDB::registerRelationType(quint32 relationId, QList<quint32> classIds)
 
     for(qint8 classIndex = 0; classIndex < classIds.size(); classIndex++)
     {
-
-
         QString registerRelationStatement =
                 "INSERT INTO `%1` (Id, `%2`, `%3`,`%4`,`%5`) "
                 "VALUES (%6, %7,%8, %9, %10)";
