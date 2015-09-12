@@ -9,6 +9,8 @@ PredicateElement::PredicateElement(QString predicateElementString)
     isValid_ = false;
     bool isInt;
 
+    quint64 lastElementInPredicateStringIndex = predicateElementString.size()-1;
+
     // Try to convert the string to an integer
     id_ = predicateElementString.toInt(&isInt);
 
@@ -16,12 +18,26 @@ PredicateElement::PredicateElement(QString predicateElementString)
     if(!isInt)
     {
         // If this is surrounded by curly braces, it might be a set of giblies
-        // if(isSurrounded)
-            // Split the string by commas, and try to parse each element as an integer
-            // Populate the ids_ list with these elements
-            // Set isSet_ to true
-        // If this isn't surrounded by quotes, it might be a class
-        /*else*/ if(predicateElementString.length() < 2 ||
+
+        if (predicateElementString.at(0)=='{"' && predicateElementString.at(lastElementInPredicateStringIndex) == '}"' )
+        {
+             //remove the first and last elements since they are curly braces
+            predicateElementString.remove(lastElementInPredicateStringIndex,1);
+            predicateElementString.remove(0,1);
+            //split the string by commas
+            QStringList predicateElementsStringList = predicateElementString.split(",");
+            //iterate through the predicate elements string and parse each element as an integer
+            quint16 predicateElementsStringListIndex;
+            QList<int> ids_;
+            for (predicateElementsStringListIndex = 0; predicateElementsStringListIndex < predicateElementsStringList.size(); predicateElementsStringListIndex++ )
+            {
+                ids_.append(predicateElementsStringList.at(predicateElementsStringListIndex).toInt(&isInt));
+                if (!isInt) return;
+
+            }
+            isSet_ = true;
+        }
+        else if(predicateElementString.length() < 2 ||
                 predicateElementString.at(0) != '\"' ||
                 predicateElementString.at(predicateElementString.length() - 1) != '\"')
         {
