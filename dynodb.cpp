@@ -238,7 +238,7 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
                 }
             }
 
-            if(!addRelation(id, firstPredicateElement->getId(), relationGroupId, giblyIds))
+            if(!addRelation(id, firstPredicateElement->getId(), relationGroupId, classIds, quantities, giblyIds))
             {
                 deleteGibly(id);
                 return 0;
@@ -696,7 +696,7 @@ bool DynoDB::addRelation(quint32 id, quint32 literalId, QVariant literal)
 {
     quint32 classId = getClass(id);
 
-    if(!relationTypeExists(classId, literalId))
+    if(!relationTypeExists(literalId, classId))
     {
         if(!registerRelationType(literalId, classId))
         {
@@ -753,7 +753,7 @@ bool DynoDB::addRelation(quint32 id, quint32 literalId, QVariant literal)
     return true;
 }
 
-bool DynoDB::addRelation(quint32 giblyId, quint32 relationId, quint32 relationGroupId, QList<quint32> giblyIds)
+bool DynoDB::addRelation(quint32 giblyId, quint32 relationId, quint32 relationGroupId, QList<quint32> classIds, QList<quint32> quantities, QList<quint32> giblyIds)
 {
     // Check whether this table exists
     if(!hasTable(relationId, relationGroupId))
@@ -765,23 +765,44 @@ bool DynoDB::addRelation(quint32 giblyId, quint32 relationId, quint32 relationGr
         }
     }
 
-    // Check whether this table has these columns
-    for(qint32 giblyIndex = 0; giblyIndex < giblyIds.size(); giblyIndex++)
-    {
-        quint32 giblyId = giblyIds.at(giblyIndex);
-        quint32 classId = getClass(giblyId);
+    QMap<quint32, quint32> classQuantityMap;
 
-        if(!hasColumn(relationId, relationGroupId, classId))
+    // Check whether this table has these columns
+    for(qint32 classIndex = 0; classIndex < classIds.size(); classIndex++)
+    {
+        quint32 classId = classIds.at(classIndex);
+
+        // The index of the last time we added this class in this relation. Default to 0
+        quint32 classQuantityIndex = 0;
+
+        // Check if we have already added this class in this relation
+        if(classQuantityMap.contains(classId))
         {
-            if(!addColumn(relationId, relationGroupId, classId, GIBLY))
+            // If we have, then let's increment the class quantity index
+            classQuantityIndex = classQuantityMap.value(classId) + 1;
+        }
+
+        // Loop through the quantity of this predicate element
+        quint32 quantityIndex;
+
+        for(quantityIndex = 0; quantityIndex < quantities.at(classIndex); quantityIndex++)
+        {
+            if(!hasColumn(relationId, relationGroupId, classId, classQuantityIndex + quantityIndex))
             {
-                return false;
+                if(!addColumn(relationId, relationGroupId, classId, classQuantityIndex + quantityIndex, GIBLY))
+                {
+                    return false;
+                }
             }
         }
+
+        classQuantityMap.insert(classId, classQuantityIndex + quantityIndex - 1);
     }
 
+    classQuantityMap.clear();
+
     QString insertRelationStatement =
-            "INSERT INTO `%2_%3` (Id, %3) VALUES (%1, %4)";
+            "INSERT INTO `%2_%3` (Id, %4) VALUES (%1, %5)";
 
     insertRelationStatement = insertRelationStatement
             .arg(giblyId)
@@ -791,21 +812,45 @@ bool DynoDB::addRelation(quint32 giblyId, quint32 relationId, quint32 relationGr
     QString columnNames;
     QString columnValues;
 
-    for(qint32 giblyIndex = 0; giblyIndex < giblyIds.size(); giblyIndex++)
+    qint32 giblyIndex = 0;
+
+    for(qint32 classIndex = 0; classIndex < classIds.size(); classIndex++)
     {
-        quint32 giblyId = giblyIds.at(giblyIndex);
-        quint32 classId = getClass(giblyId);
+        quint32 classId = classIds.at(classIndex);
 
-        columnNames.append("`%1`");
-        columnNames = columnNames.arg(classId);
-        columnValues.append("%1");
-        columnValues = columnValues.arg(giblyId);
+        // The index of the last time we added this class in this relation. Default to 0
+        quint32 classQuantityIndex = 0;
 
-        if(giblyIndex != giblyIds.size() - 1)
+        // Check if we have already added this class in this relation
+        if(classQuantityMap.contains(classId))
         {
-            columnNames.append(", ");
-            columnValues.append(", ");
+            // If we have, then let's increment the class quantity index
+            classQuantityIndex = classQuantityMap.value(classId) + 1;
         }
+
+        quint32 quantityIndex;
+
+        for(quantityIndex = 0; quantityIndex < quantities.at(classIndex); quantityIndex++)
+        {
+            quint32 giblyId = giblyIds.at(giblyIndex);
+
+            columnNames.append("`%1_%2`");
+            columnNames = columnNames
+                    .arg(classId)
+                    .arg(quantityIndex + classQuantityIndex);
+            columnValues.append("%1");
+            columnValues = columnValues.arg(giblyId);
+
+            if(giblyIndex != giblyIds.size() - 1)
+            {
+                columnNames.append(", ");
+                columnValues.append(", ");
+            }
+
+            giblyIndex++;
+        }
+
+        classQuantityMap.insert(classId, classQuantityIndex + quantityIndex - 1);
     }
 
     insertRelationStatement = insertRelationStatement.arg(columnNames);
@@ -882,13 +927,14 @@ bool DynoDB::hasColumn(quint32 classId, quint32 columnId)
     return true;
 }
 
-bool DynoDB::hasColumn(quint32 relationId, quint32 relationGroupId, quint32 columnId)
+bool DynoDB::hasColumn(quint32 relationId, quint32 relationGroupId, quint32 columnId, quint32 quantityIndex)
 {
     QString getColumnStatement =
-            "SELECT `%1` FROM `%2_%3` WHERE Id = 0";
+            "SELECT `%1_%2` FROM `%3_%4` WHERE Id = 0";
 
     getColumnStatement = getColumnStatement
             .arg(columnId)
+            .arg(quantityIndex)
             .arg(relationId)
             .arg(relationGroupId);
 
@@ -939,15 +985,16 @@ bool DynoDB::addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataTy
     return true;
 }
 
-bool DynoDB::addColumn(quint32 relationId, quint32 relationGroupId, quint32 columnId, BuiltInDataType dataType)
+bool DynoDB::addColumn(quint32 relationId, quint32 relationGroupId, quint32 columnId, quint32 quantityIndex, BuiltInDataType dataType)
 {
     QString addColumnStatement =
-            "ALTER TABLE `%1_%2` ADD COLUMN `%2` %3";
+            "ALTER TABLE `%1_%2` ADD COLUMN `%3_%4` %5";
 
     addColumnStatement = addColumnStatement
             .arg(relationId)
             .arg(relationGroupId)
-            .arg(columnId);
+            .arg(columnId)
+            .arg(quantityIndex);
 
     switch(dataType)
     {

@@ -19,7 +19,7 @@ PredicateElement::PredicateElement(QString predicateElementString)
     {
         // If this is surrounded by curly braces, it might be a set of giblies
 
-        if (predicateElementString.at(0)=='{"' && predicateElementString.at(lastElementInPredicateStringIndex) == '}"' )
+        if (predicateElementString.at(0)=='{' && predicateElementString.at(lastElementInPredicateStringIndex) == '}' )
         {
              //remove the first and last elements since they are curly braces
             predicateElementString.remove(lastElementInPredicateStringIndex,1);
@@ -28,7 +28,6 @@ PredicateElement::PredicateElement(QString predicateElementString)
             QStringList predicateElementsStringList = predicateElementString.split(",");
             //iterate through the predicate elements string and parse each element as an integer
             quint16 predicateElementsStringListIndex;
-            QList<int> ids_;
             for (predicateElementsStringListIndex = 0; predicateElementsStringListIndex < predicateElementsStringList.size(); predicateElementsStringListIndex++ )
             {
                 ids_.append(predicateElementsStringList.at(predicateElementsStringListIndex).toInt(&isInt));
