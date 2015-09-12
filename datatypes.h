@@ -19,6 +19,7 @@ enum BuiltInDataType {
     IS_COLUMN = 9,
     GROUP = 10,
     DIRECTION = 11,
+    QUANTITY = 12,
 
     // Literal classes
     LITERAL = 500,

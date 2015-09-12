@@ -121,7 +121,7 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
 
         PredicateElement const* giblyPredicateElement = predicate->getElement(1);
 
-        if(giblyPredicateElement->isLiteral())
+        if(giblyPredicateElement->isLiteral() || giblyPredicateElement->isSet())
         {
             deleteGibly(id);
             return 0;
@@ -176,9 +176,13 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
         {
             QList<quint32> classIds;
             QList<quint32> giblyIds;
+            QList<quint32> quantities;
+
             for (qint8 remainingPredicateIndex = 1; remainingPredicateIndex < predicate->getNumElements(); remainingPredicateIndex++)
             {
-                if (predicate->getElement(remainingPredicateIndex)->isLiteral())
+                PredicateElement const* predicateElement = predicate->getElement(remainingPredicateIndex);
+
+                if (predicateElement->isLiteral())
                 {
                     //TODO: clean this up in the future because it is kind of a waste
                     deleteGibly(id);
@@ -186,27 +190,55 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
                 }
                 else
                 {
-                    giblyIds.append(predicate->getElement(remainingPredicateIndex)->getId());
-                    quint32 classId = getClass(giblyIds.last());
-                    if (!classId)
+                    if(predicateElement->isSet())
                     {
-                        //TODO: clean this up in the future because it is kind of a waste
-                        deleteGibly(id);
-                        return 0;
+                        quint32 classId = getClass(predicateElement->getIds().first());
+
+                        if (!classId)
+                        {
+                            //TODO: clean this up in the future because it is kind of a waste
+                            deleteGibly(id);
+                            return 0;
+                        }
+
+                        classIds.append(classId);
+                        giblyIds.append(predicateElement->getIds());
+                        quantities.append(predicateElement->getIds().size());
                     }
                     else
                     {
-                        classIds.append(classId);
-                    }
+                        giblyIds.append(predicate->getElement(remainingPredicateIndex)->getId());
+                        quint32 classId = getClass(giblyIds.last());
+                        if (!classId)
+                        {
+                            //TODO: clean this up in the future because it is kind of a waste
+                            deleteGibly(id);
+                            return 0;
+                        }
+                        else
+                        {
+                            classIds.append(classId);
+                        }
 
+                        quantities.append(1);
+                    }
                 }
             }
-            if (!relationTypeExists(predicate->getElement(0)->getId(),classIds))
+
+            quint32 relationGroupId = relationTypeExists(predicate->getElement(0)->getId(), classIds, quantities);
+
+            if (relationGroupId == 0)
             {
-                registerRelationType(predicate->getElement(0)->getId(),classIds);
+                relationGroupId = registerRelationType(predicate->getElement(0)->getId(), classIds, quantities);
+
+                if(relationGroupId == 0)
+                {
+                    deleteGibly(id);
+                    return 0;
+                }
             }
 
-            if(!addRelation(id, firstPredicateElement->getId(), giblyIds))
+            if(!addRelation(id, firstPredicateElement->getId(), relationGroupId, giblyIds))
             {
                 deleteGibly(id);
                 return 0;
@@ -220,18 +252,6 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
     }
 
     return id;
-}
-
-QList<Relation*> DynoDB::getRelations(quint32 giblyId)
-{
-    //QString checkRelationTableStatement = "SELECT Id FROM `8` WHERE ";
-
-    return QList<Relation*>();
-}
-
-QList<Predicate*> DynoDB::getPredicates(Relation* relation, quint32 giblyId)
-{
-    return QList<Predicate*>();
 }
 
 Class* DynoDB::getClass(QString name)
@@ -335,14 +355,16 @@ bool DynoDB::initialize()
                 "`%2` INT,"
                 "`%3` BOOL,"
                 "`%4` INT,"
-                "`%5` INT)";
+                "`%5` INT,"
+                "`%6` INT)";
 
         createRelationTableStatement = createRelationTableStatement
                 .arg(RELATION)
                 .arg(CLASS)
                 .arg(IS_COLUMN)
                 .arg(GROUP)
-                .arg(DIRECTION);
+                .arg(DIRECTION)
+                .arg(QUANTITY);
 
         database.exec(createRelationTableStatement);
 
@@ -393,37 +415,6 @@ bool DynoDB::initialize()
         {
             return false;
         }
-
-//        if(!registerRelationType(NAME,CLASS))
-//        {
-//            return false;
-//        }
-
-//        if(!registerRelationType(NAME,LITERAL))
-//        {
-//            return false;
-//        }
-
-//        if(!registerRelationType(HAS_TABLE,CLASS))
-//        {
-//            return false;
-//        }
-
-//        if(!registerRelationType(IS_COLUMN,RELATION))
-//        {
-//            return false;
-//        }
-
-//        if(!registerRelationType(CLASS,RELATION))
-//        {
-//            return false;
-//        }
-
-//        if(!registerRelationType(CLASS,INSTANCE))
-//        {
-//            return false;
-//        }
-
     }
 
     return true;
@@ -530,6 +521,31 @@ bool DynoDB::hasTable(quint32 classId)
     return false;
 }
 
+bool DynoDB::hasTable(quint32 relationId, quint32 relationGroupId)
+{
+    QString isColumnStatement =
+            "SELECT `%1` FROM `%2` WHERE Id = %3 AND `%4` = %5";
+
+    isColumnStatement = isColumnStatement
+            .arg(IS_COLUMN)
+            .arg(RELATION)
+            .arg(relationId)
+            .arg(GROUP)
+            .arg(relationGroupId);
+
+    QSqlQuery isColumnQuery = database.exec(isColumnStatement);
+
+    while(isColumnQuery.next())
+    {
+        if(!isColumnQuery.value(0).toBool())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool DynoDB::makeClassTable(quint32 classId)
 {
     QString createClassTableStatement =
@@ -555,6 +571,44 @@ bool DynoDB::makeClassTable(quint32 classId)
             .arg(classId);
 
     database.exec(updateClassesTableStatement);
+
+    if(database.lastError().type() != QSqlError::NoError)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool DynoDB::makeRelationTable(quint32 relationId, quint32 relationGroupId)
+{
+    QString createRelationTableStatement =
+            "CREATE TABLE `%1_%2` (\
+            Id INT PRIMARY KEY)";
+
+    createRelationTableStatement = createRelationTableStatement
+            .arg(relationId)
+            .arg(relationGroupId);
+
+    database.exec(createRelationTableStatement);
+
+    if(database.lastError().type() != QSqlError::NoError)
+    {
+        return false;
+    }
+
+    QString updateRelationTableStatement =
+            "UPDATE `%1` SET `%2` = 0 "
+            "WHERE Id = %3 AND `%4` = %5";
+
+    updateRelationTableStatement = updateRelationTableStatement
+            .arg(RELATION)
+            .arg(IS_COLUMN)
+            .arg(relationId)
+            .arg(GROUP)
+            .arg(relationGroupId);
+
+    database.exec(updateRelationTableStatement);
 
     if(database.lastError().type() != QSqlError::NoError)
     {
@@ -699,13 +753,13 @@ bool DynoDB::addRelation(quint32 id, quint32 literalId, QVariant literal)
     return true;
 }
 
-bool DynoDB::addRelation(quint32 giblyId, quint32 relationId, QList<quint32> giblyIds)
+bool DynoDB::addRelation(quint32 giblyId, quint32 relationId, quint32 relationGroupId, QList<quint32> giblyIds)
 {
     // Check whether this table exists
-    if(!hasTable(relationId))
+    if(!hasTable(relationId, relationGroupId))
     {
         // If it doesn't, make it
-        if(!makeClassTable(relationId))
+        if(!makeRelationTable(relationId, relationGroupId))
         {
             return false;
         }
@@ -717,9 +771,9 @@ bool DynoDB::addRelation(quint32 giblyId, quint32 relationId, QList<quint32> gib
         quint32 giblyId = giblyIds.at(giblyIndex);
         quint32 classId = getClass(giblyId);
 
-        if(!hasColumn(relationId, classId))
+        if(!hasColumn(relationId, relationGroupId, classId))
         {
-            if(!addColumn(relationId, classId, GIBLY))
+            if(!addColumn(relationId, relationGroupId, classId, GIBLY))
             {
                 return false;
             }
@@ -727,10 +781,12 @@ bool DynoDB::addRelation(quint32 giblyId, quint32 relationId, QList<quint32> gib
     }
 
     QString insertRelationStatement =
-            "INSERT INTO `%2` (Id, %3) VALUES (%1, %4)";
+            "INSERT INTO `%2_%3` (Id, %3) VALUES (%1, %4)";
 
-    insertRelationStatement = insertRelationStatement.arg(giblyId);
-    insertRelationStatement = insertRelationStatement.arg(relationId);
+    insertRelationStatement = insertRelationStatement
+            .arg(giblyId)
+            .arg(relationId)
+            .arg(relationGroupId);
 
     QString columnNames;
     QString columnValues;
@@ -826,6 +882,26 @@ bool DynoDB::hasColumn(quint32 classId, quint32 columnId)
     return true;
 }
 
+bool DynoDB::hasColumn(quint32 relationId, quint32 relationGroupId, quint32 columnId)
+{
+    QString getColumnStatement =
+            "SELECT `%1` FROM `%2_%3` WHERE Id = 0";
+
+    getColumnStatement = getColumnStatement
+            .arg(columnId)
+            .arg(relationId)
+            .arg(relationGroupId);
+
+    database.exec(getColumnStatement);
+
+    if(database.lastError().type() != QSqlError::NoError)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 bool DynoDB::addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataType)
 {
     QString addColumnStatement =
@@ -863,12 +939,50 @@ bool DynoDB::addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataTy
     return true;
 }
 
-bool DynoDB::relationTypeExists(quint32 relationId, quint32 classId)
+bool DynoDB::addColumn(quint32 relationId, quint32 relationGroupId, quint32 columnId, BuiltInDataType dataType)
 {
-   return  relationTypeExists(relationId, QList<quint32>({classId}));
+    QString addColumnStatement =
+            "ALTER TABLE `%1_%2` ADD COLUMN `%2` %3";
+
+    addColumnStatement = addColumnStatement
+            .arg(relationId)
+            .arg(relationGroupId)
+            .arg(columnId);
+
+    switch(dataType)
+    {
+    case BOOL:
+        addColumnStatement = addColumnStatement.arg("BOOL");
+        break;
+    case INTEGER:
+        addColumnStatement = addColumnStatement.arg("INT");
+        break;
+    case DATETIME:
+        addColumnStatement = addColumnStatement.arg("DATETIME(4)");
+        break;
+    case STRING:
+        addColumnStatement = addColumnStatement.arg("VARCHAR(255)");
+        break;
+    default:
+        addColumnStatement = addColumnStatement.arg("INT");
+    }
+
+    database.exec(addColumnStatement);
+
+    if(database.lastError().type() != QSqlError::NoError)
+    {
+        return false;
+    }
+
+    return true;
 }
 
-bool DynoDB::relationTypeExists(quint32 relationId, QList<quint32> classIds)
+quint32 DynoDB::relationTypeExists(quint32 relationId, quint32 classId)
+{
+    return  relationTypeExists(relationId, QList<quint32>({classId}), QList<quint32>({1}));
+}
+
+quint32 DynoDB::relationTypeExists(quint32 relationId, QList<quint32> classIds, QList<quint32> quantities)
 {
     QString checkRelationStatement = "SELECT DISTINCT `%1` FROM `%2` WHERE Id = %3";
 
@@ -876,32 +990,40 @@ bool DynoDB::relationTypeExists(quint32 relationId, QList<quint32> classIds)
             .arg(GROUP)
             .arg(RELATION)
             .arg(relationId);
+
     QSqlQuery checkRelationQuery = database.exec(checkRelationStatement);
 
     while (checkRelationQuery.next())
     {
         quint16 currentGroupId = checkRelationQuery.value(0).toInt();
-        QString getRelationStatement = "SELECT `%1` FROM `%2` WHERE Id = %3 AND `%4` = %5 ORDER BY `%6`";
+
+        QString getRelationStatement = "SELECT `%1`, `%2` FROM `%3` WHERE Id = %4 AND `%5` = %6 ORDER BY `%7`";
         getRelationStatement = getRelationStatement
                 .arg(CLASS)
+                .arg(QUANTITY)
                 .arg(RELATION)
                 .arg(relationId)
                 .arg(GROUP)
                 .arg(currentGroupId)
                 .arg(DIRECTION);
+
         QSqlQuery getRelationQuery = database.exec(getRelationStatement);
-        if (getRelationQuery.size() != classIds.size())
+
+        if(getRelationQuery.size() != classIds.size())
         {
             continue;
         }
         else
         {
             bool allMatch = true;
-            for (qint32 currentClassIdIndex = 0; currentClassIdIndex < classIds.size(); currentClassIdIndex++)
+            for (qint32 currentClassIndex = 0; currentClassIndex < classIds.size(); currentClassIndex++)
             {
                 getRelationQuery.next();
-                quint16 getClassId = getRelationQuery.value(0).toInt();
-                if (classIds.at(currentClassIdIndex) != getClassId)
+                quint16 classId = getRelationQuery.value(0).toInt();
+                quint16 quantity = getRelationQuery.value(1).toInt();
+
+                if (classIds.at(currentClassIndex) != classId ||
+                        quantities.at(currentClassIndex) != quantity)
                 {
                     allMatch = false;
                     break;
@@ -909,22 +1031,21 @@ bool DynoDB::relationTypeExists(quint32 relationId, QList<quint32> classIds)
             }
             if (allMatch)
             {
-                return true;
+                return currentGroupId;
             }
         }
     }
 
-    return false;
+    return 0;
 }
 
 
-bool DynoDB::registerRelationType(quint32 relationId,quint32 classId)
+quint32 DynoDB::registerRelationType(quint32 relationId,quint32 classId)
 {
-    return registerRelationType(relationId,QList<quint32>({classId}));
+    return registerRelationType(relationId,QList<quint32>({classId}), QList<quint32>({1}));
 }
 
-
-bool DynoDB::registerRelationType(quint32 relationId, QList<quint32> classIds)
+quint32 DynoDB::registerRelationType(quint32 relationId, QList<quint32> classIds, QList<quint32> quantities)
 {
     QString largestGroupStatement =
             "SELECT MAX(`%1`) FROM `%2` WHERE Id = %3";
@@ -949,8 +1070,8 @@ bool DynoDB::registerRelationType(quint32 relationId, QList<quint32> classIds)
     for(qint8 classIndex = 0; classIndex < classIds.size(); classIndex++)
     {
         QString registerRelationStatement =
-                "INSERT INTO `%1` (Id, `%2`, `%3`,`%4`,`%5`) "
-                "VALUES (%6, %7,%8, %9, %10)";
+                "INSERT INTO `%1` (Id, `%2`, `%3`, `%4`, `%5`, `%6`) "
+                "VALUES (%7, %8, %9, %10, %11, %12)";
 
         registerRelationStatement = registerRelationStatement
                 .arg(RELATION)
@@ -958,19 +1079,21 @@ bool DynoDB::registerRelationType(quint32 relationId, QList<quint32> classIds)
                 .arg(IS_COLUMN)
                 .arg(GROUP)
                 .arg(DIRECTION)
+                .arg(QUANTITY)
                 .arg(relationId)
                 .arg(classIds.at(classIndex))
                 .arg(true)
                 .arg(groupId)
-                .arg(classIndex+1);
+                .arg(classIndex+1)
+                .arg(quantities.at(classIndex));
 
         database.exec(registerRelationStatement);
 
         if(database.lastError().type() != QSqlError::NoError)
         {
-            return false;
+            return 0;
         }
     }
 
-    return true;
+    return groupId;
 }
