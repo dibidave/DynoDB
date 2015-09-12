@@ -47,7 +47,7 @@ private:
     bool isLiteral(quint32 id);
     bool createLiteral(quint32 id, QString literalName, quint32 typeId);
     bool addRelation(quint32 id, quint32 literalId, QVariant literal);
-    bool addRelation(quint32 relationId, QList<quint32> classIds);
+    bool addRelation(quint32 giblyId, quint32 relationId, QList<quint32> classIds);
     quint32 getClass(quint32 id);
     BuiltInDataType getLiteralType(quint32 id);
     bool hasColumn(quint32 classId, quint32 columnId);

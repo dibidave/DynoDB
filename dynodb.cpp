@@ -175,6 +175,7 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
         else
         {
             QList<quint32> classIds;
+            QList<quint32> giblyIds;
             for (qint8 remainingPredicateIndex = 1; remainingPredicateIndex < predicate->getNumElements(); remainingPredicateIndex++)
             {
                 if (predicate->getElement(remainingPredicateIndex)->isLiteral())
@@ -185,7 +186,8 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
                 }
                 else
                 {
-                    quint32 classId = getClass(predicate->getElement(remainingPredicateIndex)->getId());
+                    giblyIds.append(predicate->getElement(remainingPredicateIndex)->getId());
+                    quint32 classId = getClass(giblyIds.last());
                     if (!classId)
                     {
                         //TODO: clean this up in the future because it is kind of a waste
@@ -204,7 +206,11 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
                 registerRelationType(predicate->getElement(0)->getId(),classIds);
             }
 
-            addRelation(firstPredicateElement->getId(), classIds);
+            if(!addRelation(id, firstPredicateElement->getId(), giblyIds))
+            {
+                deleteGibly(id);
+                return 0;
+            }
         }
     }
     else
@@ -693,7 +699,7 @@ bool DynoDB::addRelation(quint32 id, quint32 literalId, QVariant literal)
     return true;
 }
 
-bool DynoDB::addRelation(quint32 relationId, QList<quint32> giblyIds)
+bool DynoDB::addRelation(quint32 giblyId, quint32 relationId, QList<quint32> giblyIds)
 {
     // Check whether this table exists
     if(!hasTable(relationId))
@@ -721,8 +727,9 @@ bool DynoDB::addRelation(quint32 relationId, QList<quint32> giblyIds)
     }
 
     QString insertRelationStatement =
-            "INSERT INTO `%1` (%2) VALUES (%3)";
+            "INSERT INTO `%2` (Id, %3) VALUES (%1, %4)";
 
+    insertRelationStatement = insertRelationStatement.arg(giblyId);
     insertRelationStatement = insertRelationStatement.arg(relationId);
 
     QString columnNames;
@@ -733,9 +740,9 @@ bool DynoDB::addRelation(quint32 relationId, QList<quint32> giblyIds)
         quint32 giblyId = giblyIds.at(giblyIndex);
         quint32 classId = getClass(giblyId);
 
-        columnNames.append("`%1`%2");
+        columnNames.append("`%1`");
         columnNames = columnNames.arg(classId);
-        columnValues.append("%1%2");
+        columnValues.append("%1");
         columnValues = columnValues.arg(giblyId);
 
         if(giblyIndex != giblyIds.size() - 1)
