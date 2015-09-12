@@ -4,21 +4,24 @@
 
 PredicateElement::PredicateElement(QString predicateElementString)
 {
+    isLiteral_ = false;
+    isSet_ = false;
     isValid_ = false;
     bool isInt;
 
     // Try to convert the string to an integer
     id_ = predicateElementString.toInt(&isInt);
 
-    // If it's successful, we're done
-    if(isInt)
+    // If it's not successful, parse it
+    if(!isInt)
     {
-        isLiteral_ = false;
-    }
-    else
-    {
+        // If this is surrounded by curly braces, it might be a set of giblies
+        // if(isSurrounded)
+            // Split the string by commas, and try to parse each element as an integer
+            // Populate the ids_ list with these elements
+            // Set isSet_ to true
         // If this isn't surrounded by quotes, it might be a class
-        if(predicateElementString.length() < 2 ||
+        /*else*/ if(predicateElementString.length() < 2 ||
                 predicateElementString.at(0) != '\"' ||
                 predicateElementString.at(predicateElementString.length() - 1) != '\"')
         {
@@ -30,7 +33,6 @@ PredicateElement::PredicateElement(QString predicateElementString)
                 return;
             }
 
-            isLiteral_ = false;
             id_ = dbclass->getId();
         }
         else
@@ -61,9 +63,19 @@ bool PredicateElement::isLiteral() const
     return isLiteral_;
 }
 
+bool PredicateElement::isSet() const
+{
+    return isSet_;
+}
+
 quint32 PredicateElement::getId() const
 {
     return id_;
+}
+
+QList<quint32> PredicateElement::getIds() const
+{
+    return ids_;
 }
 
 QVariant PredicateElement::getLiteral() const

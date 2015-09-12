@@ -38,8 +38,30 @@ Predicate::Predicate(QString predicateString)
 
     while(true)
     {
+        // See if we can find an open curly brace
+        qint16 openCurlyBraceIndex = predicateString.indexOf("{", cursorIndex);
+
         // Find the next comma
         qint16 nextCursorIndex = predicateString.indexOf(",", cursorIndex);
+
+        // If there is a curly brace and it shows up before the next comma,
+        // then this is the start of a set
+        if(openCurlyBraceIndex != -1
+                && (openCurlyBraceIndex < nextCursorIndex || nextCursorIndex == -1))
+        {
+            // Look for a closing curly brace
+            nextCursorIndex = predicateString.indexOf("}", cursorIndex);
+
+            // If there isn't a closing curly brace, then this is an invalid statement
+            if(nextCursorIndex == -1)
+            {
+                return;
+            }
+
+            // Find the next comma
+            nextCursorIndex = predicateString.indexOf(",", nextCursorIndex);
+        }
+
 
         // If we didn't find a comma, let's look for a closing parentheses
         if(nextCursorIndex == -1)
