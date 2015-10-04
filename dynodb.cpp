@@ -254,13 +254,103 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
     return id;
 }
 
-// TODO: Implement all the things
 QList<QPair<quint32, QMap<QString, QString>>> DynoDB::processQuery(Predicate* predicate)
 {
+    // Get the list of gibly Ids that match this query
     QList<quint32> internalQueryResults = processInternalQuery(predicate);
 
-    // TODO: Get all the attribute-value pairs from the found ids
+    // Initiate the query results list
     QList<QPair<quint32, QMap<QString, QString>>> queryResults;
+
+    // Loop through the giblies that we got from the internal query
+    for(qint32 giblyIndex = 0; giblyIndex < internalQueryResults.size();
+        giblyIndex++)
+    {
+        // The current gibly we're looking at
+        quint32 giblyId = internalQueryResults.at(giblyIndex);
+
+        // Get the class of this gibly
+        int classId = getClass(giblyId);
+
+        // Get all column relations for this class
+        QString getRelationsQueryStatement = "SELECT Id FROM `%1` WHERE `%2` = %3 AND '%4' = 1";
+        getRelationsQueryStatement = getRelationsQueryStatement
+                .arg(RELATION)
+                .arg(CLASS)
+                .arg(classId)
+                .arg(IS_COLUMN);
+
+        QSqlQuery getRelationsQuery = database.exec(getRelationsQueryStatement);
+
+        QString getValuesQueryStatement = "SELECT ";
+
+        if(!getRelationsQuery.next())
+        {
+            return queryResults;
+        }
+
+        bool processedAllQueryResults = false;
+
+        // Loop through each column relation in this class
+        do
+        {
+            bool ok;
+
+            // Get the id of this column
+            quint32 relationId = getRelationsQuery.value(0).toInt(&ok);
+
+            if(!ok)
+            {
+                return queryResults;
+            }
+
+            // Append this id to your select statement
+            getValuesQueryStatement.append(QString("`%1`").arg(relationId));
+
+            // If this isn't the end of the list, add a comma to separate the next id
+            if(getRelationsQuery.next())
+            {
+                getValuesQueryStatement.append(", ");
+            }
+            else
+            {
+                processedAllQueryResults = true;
+            }
+
+        } while (!processedAllQueryResults);
+
+        getValuesQueryStatement.append(" FROM `%1` WHERE Id = %2");
+        getValuesQueryStatement = getValuesQueryStatement
+                .arg(classId)
+                .arg(giblyId);
+
+        QSqlQuery getValuesQuery = database.exec(getValuesQueryStatement);
+
+        if(!getValuesQuery.next())
+        {
+            return queryResults;
+        }
+
+        // A map of the relation-value pairs
+        QMap<QString, QString> attributeValues;
+
+        // Loop through the values of the relations of this gibly
+        for(qint32 attributeIndex = 0; attributeIndex < getValuesQuery.record().count();
+            attributeIndex++)
+        {
+            // Add this relation name and value to the map
+            attributeValues.insert(getValuesQuery.record().fieldName(attributeIndex),
+                                   getValuesQuery.value(attributeIndex).toString());
+        }
+
+        // Create a tuple of the gibly Id and its attribute value pairs
+        QPair<quint32, QMap<QString, QString>> giblyRecord;
+        giblyRecord.first = giblyId;
+        giblyRecord.second = attributeValues;
+
+        // Add this tuple to our list
+        queryResults.append(giblyRecord);
+    }
 
     return queryResults;
 }
@@ -1181,7 +1271,6 @@ QList<quint32> DynoDB::processInternalQuery(Predicate* predicate)
 
     // We did find a query variable or list, so
         // If we have a list of ids, we write a sql query that filters by id
-        // If we have just a query variable, we get all ids
 
     return internalQueryResults;
 }
