@@ -163,3 +163,8 @@ QString PredicateElement::toString() const
         return QString("%1").arg(id_);
     }
 }
+
+Predicate const* PredicateElement::getPredicate() const
+{
+    return predicate_;
+}

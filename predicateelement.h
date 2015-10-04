@@ -22,7 +22,7 @@ public:
     quint32 getId() const;
     QList<quint32> getIds() const;
     QVariant getLiteral() const;
-
+    Predicate const* getPredicate() const;
     QString toString() const;
 
 private:

@@ -218,3 +218,6 @@ QString Predicate::toString() const
 
     return predicateString;
 }
+
+
+

@@ -254,7 +254,7 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
     return id;
 }
 
-QList<QPair<quint32, QMap<QString, QString>>> DynoDB::processQuery(Predicate* predicate)
+QList<QPair<quint32, QMap<QString, QString>>> DynoDB::processQuery(Predicate const* predicate)
 {
     // Get the list of gibly Ids that match this query
     QList<quint32> internalQueryResults = processInternalQuery(predicate);
@@ -1254,10 +1254,10 @@ quint32 DynoDB::registerRelationType(quint32 relationId, QList<quint32> classIds
 
 
 // TODO: Get all the ids of objects that match the query
-QList<quint32> DynoDB::processInternalQuery(Predicate* predicate)
+QList<quint32> DynoDB::processInternalQuery(Predicate const* predicate)
 {
     QList<quint32> internalQueryResults;
-
+    qint64 queryIndex = 0;
     // Loop through all predicate elements and find the query one. If it's a subpredicate,
     // Process its query first. Otherwise, process it.
     quint64 predicateElementIndex = 0;
@@ -1266,12 +1266,25 @@ QList<quint32> DynoDB::processInternalQuery(Predicate* predicate)
     {
         if (predicate->getElement(predicateElementIndex)->isPredicate())
         {
-            internalQueryResults = processInternalQuery(predicate->getElement((predicateElementIndex)));
+            internalQueryResults = processInternalQuery(predicate->getElement(predicateElementIndex)->getPredicate());
         }
-        else if (predicate->getElement(predicateElementIndex)->isQuery)
+        else if (predicate->getElement(predicateElementIndex)->isQuery())
         {
-            //stuff
+            queryIndex = predicateElementIndex;
+
         }
+    }
+
+
+    if (internalQueryResults.isEmpty() && queryIndex == 0)
+    {
+        // If we find nothing, this is an empty result set, return it
+        return internalQueryResults;
+    }
+
+    if (queryIndex != 0)
+    {
+
     }
 
 
