@@ -22,8 +22,9 @@ public:
              QString userName,
              QString password);
 
-    quint32 addPredicate(QString predicateString);
     quint32 addPredicate(Predicate* predicate);
+
+    QList<QPair<quint32, QMap<QString, QString>>> processQuery(Predicate* predicate);
 
     Class* getClass(QString name);
 
@@ -53,6 +54,8 @@ private:
     bool addColumn(quint32 classId, quint32 columnId, BuiltInDataType dataType);
     bool hasColumn(quint32 relationId, quint32 relationGroupId, quint32 columnId, quint32 quantityIndex);
     bool addColumn(quint32 relationId, quint32 relationGroupId, quint32 columnId, quint32 quantityIndex, BuiltInDataType dataType);
+
+    QList<quint32> processInternalQuery(Predicate* predicate);
 
     quint32 relationTypeExists(quint32 relationId, quint32 classId);
     quint32 relationTypeExists(quint32 relationId, QList<quint32> classIds, QList<quint32> quantities);

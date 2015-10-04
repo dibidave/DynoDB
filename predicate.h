@@ -23,6 +23,8 @@ public:
     quint16 getNumElements() const;
     PredicateElement const* getElement(quint16 index) const;
 
+    bool isQuery() const;
+
     QString toString() const;
 
 private:

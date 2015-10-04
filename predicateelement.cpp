@@ -1,12 +1,16 @@
 #include "predicateelement.h"
 
 #include "dynodb.h"
+#include "predicate.h"
 
 PredicateElement::PredicateElement(QString predicateElementString)
 {
     isLiteral_ = false;
     isSet_ = false;
     isValid_ = false;
+    isQuery_ = false;
+    isPredicate_ = false;
+    predicate_ = 0;
     bool isInt;
 
     quint64 lastElementInPredicateStringIndex = predicateElementString.size()-1;
@@ -17,6 +21,33 @@ PredicateElement::PredicateElement(QString predicateElementString)
     // If it's not successful, parse it
     if(!isInt)
     {
+        // If the first element is a question mark, this is a query variable
+        if(predicateElementString.at(0) == '?')
+        {
+            isQuery_ = true;
+            predicateElementString.remove(0,1);
+
+            if(predicateElementString.isEmpty())
+            {
+                isValid_ = true;
+                return;
+            }
+        }
+
+        // If this has an open parentheses and ends in a closing parentheses, it might be a predicate
+        if (predicateElementString.indexOf("(") != -1 && predicateElementString.at(lastElementInPredicateStringIndex) == ')' )
+        {
+            isPredicate_ = true;
+            predicate_ = new Predicate(predicateElementString);
+
+            if(predicate_->isValid())
+            {
+                isValid_ = true;
+            }
+
+            return;
+        }
+
         // If this is surrounded by curly braces, it might be a set of giblies
 
         if (predicateElementString.at(0)=='{' && predicateElementString.at(lastElementInPredicateStringIndex) == '}' )
@@ -65,7 +96,10 @@ PredicateElement::PredicateElement(QString predicateElementString)
 
 PredicateElement::~PredicateElement()
 {
-
+    if(predicate_ != 0)
+    {
+        delete predicate_;
+    }
 }
 
 bool PredicateElement::isValid() const
@@ -81,6 +115,16 @@ bool PredicateElement::isLiteral() const
 bool PredicateElement::isSet() const
 {
     return isSet_;
+}
+
+bool PredicateElement::isQuery() const
+{
+    return isQuery_;
+}
+
+bool PredicateElement::isPredicate() const
+{
+    return isPredicate_;
 }
 
 quint32 PredicateElement::getId() const

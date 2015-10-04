@@ -2,6 +2,8 @@
 #define GIBLY_H
 
 #include <QObject>
+#include <QString>
+#include <QMap>
 
 class Gibly : public QObject
 {
@@ -10,6 +12,7 @@ public:
     Gibly(quint32 id);
 
     quint32 getId() const;
+    QMap<QString, QString> getAttributes() const;
 
 private:
     quint32 id_;

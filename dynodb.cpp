@@ -254,6 +254,17 @@ quint32 DynoDB::addPredicate(Predicate* predicate)
     return id;
 }
 
+// TODO: Implement all the things
+QList<QPair<quint32, QMap<QString, QString>>> DynoDB::processQuery(Predicate* predicate)
+{
+    QList<quint32> internalQueryResults = processInternalQuery(predicate);
+
+    // TODO: Get all the attribute-value pairs from the found ids
+    QList<QPair<quint32, QMap<QString, QString>>> queryResults;
+
+    return queryResults;
+}
+
 Class* DynoDB::getClass(QString name)
 {
     //Return corresponding class with id matching the input string
@@ -443,6 +454,11 @@ bool DynoDB::createClass(quint32 id, QString name)
 
 bool DynoDB::createLiteral(quint32 id, QString literalName, quint32 typeId)
 {
+    if(!createClass(id, literalName))
+    {
+        return false;
+    }
+
     QString addLiteralStatement =
             "INSERT INTO `%1` (Id, `%2`, `%3`) "
             "VALUES (%4, '%5', %6)";
@@ -1143,4 +1159,29 @@ quint32 DynoDB::registerRelationType(quint32 relationId, QList<quint32> classIds
     }
 
     return groupId;
+}
+
+
+
+// TODO: Get all the ids of objects that match the query
+QList<quint32> DynoDB::processInternalQuery(Predicate* predicate)
+{
+    QList<quint32> internalQueryResults;
+
+    // Loop through all predicate elements and find the query one. If it's a subpredicate,
+    // Process its query first. Otherwise, process it.
+
+    // For loop predicate elements
+        // If we find a subpredicate, then run processInternalQuery on it
+
+    // At the end of this for loop, we will either have a list of ids or nothing
+        // If we find nothing, we look for a query variable
+            // Loop through all predicate elements and search for query variable
+            // If we find nothing, this is an empty result set, return it
+
+    // We did find a query variable or list, so
+        // If we have a list of ids, we write a sql query that filters by id
+        // If we have just a query variable, we get all ids
+
+    return internalQueryResults;
 }

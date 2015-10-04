@@ -38,15 +38,35 @@ Predicate::Predicate(QString predicateString)
 
     while(true)
     {
+        // See if this is a subpredicate
+        qint16 openParenthesesIndex = predicateString.indexOf("(", cursorIndex);
+
         // See if we can find an open curly brace
         qint16 openCurlyBraceIndex = predicateString.indexOf("{", cursorIndex);
 
         // Find the next comma
         qint16 nextCursorIndex = predicateString.indexOf(",", cursorIndex);
 
+        // If there is an open parentheses and it shows up before the next comma,
+        // then this is the start of a subpredicate
+        if(openParenthesesIndex != -1
+                && (openParenthesesIndex < nextCursorIndex || nextCursorIndex == -1))
+        {
+            // Look for a closing parentheses
+            nextCursorIndex = predicateString.indexOf(")", cursorIndex);
+
+            // If there isn't a closing parentheses, then this is an invalid statement
+            if(nextCursorIndex == -1)
+            {
+                return;
+            }
+
+            // Find the next comma
+            nextCursorIndex = predicateString.indexOf(",", nextCursorIndex);
+        }
         // If there is a curly brace and it shows up before the next comma,
         // then this is the start of a set
-        if(openCurlyBraceIndex != -1
+        else if(openCurlyBraceIndex != -1
                 && (openCurlyBraceIndex < nextCursorIndex || nextCursorIndex == -1))
         {
             // Look for a closing curly brace
@@ -61,7 +81,6 @@ Predicate::Predicate(QString predicateString)
             // Find the next comma
             nextCursorIndex = predicateString.indexOf(",", nextCursorIndex);
         }
-
 
         // If we didn't find a comma, let's look for a closing parentheses
         if(nextCursorIndex == -1)
@@ -146,6 +165,12 @@ PredicateElement const* Predicate::getElement(quint16 index) const
     }
 
     return predicateElements_.at(index);
+}
+
+// TODO: Implement recursive loop
+bool Predicate::isQuery() const
+{
+    return false;
 }
 
 QString Predicate::toString() const

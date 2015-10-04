@@ -2,6 +2,7 @@
 #include <QTextStream>
 
 #include <QtSql>
+#include <QPair>
 
 #include "dynodb.h"
 #include "predicate.h"
@@ -45,15 +46,34 @@ int main(int argc, char *argv[])
 
         if(predicate->isValid())
         {
-            quint32 id = dynoDB.addPredicate(predicate);
-
-            if(id == 0)
+            if(predicate->isQuery())
             {
-                cout << "Error adding predicate." << endl;
+                QList<QPair<quint32, QMap<QString, QString>>> queryResults = dynoDB.processQuery(predicate);
+
+                for(qint32 queryResultIndex = 0; queryResultIndex < queryResults.size();
+                    queryResultIndex++)
+                {
+                    cout << queryResults.at(queryResultIndex).first << ":\n";
+
+                    for(QMap<QString, QString>::iterator attributeElement = queryResults[queryResultIndex].second.begin();
+                        attributeElement != queryResults[queryResultIndex].second.end(); attributeElement++)
+                    {
+                        cout << "\t" << attributeElement.key() << ": " << attributeElement.value() << "\n";
+                    }
+                }
             }
             else
             {
-                cout << "Created Gibly Id " << id << " parsed as : " << predicate->toString() << endl;
+                quint32 id = dynoDB.addPredicate(predicate);
+
+                if(id == 0)
+                {
+                    cout << "Error adding predicate." << endl;
+                }
+                else
+                {
+                    cout << "Created Gibly Id " << id << " parsed as : " << predicate->toString() << endl;
+                }
             }
         }
         else

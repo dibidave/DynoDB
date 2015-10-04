@@ -10,3 +10,8 @@ quint32 Gibly::getId() const
 {
     return id_;
 }
+
+QMap<QString, QString> Gibly::getAttributes() const
+{
+    return QMap<QString, QString>();
+}
