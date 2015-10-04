@@ -167,10 +167,26 @@ PredicateElement const* Predicate::getElement(quint16 index) const
     return predicateElements_.at(index);
 }
 
-// TODO: Implement recursive loop
+
 bool Predicate::isQuery() const
 {
+
+    // Loop through predicate elements and check if they are queries
+    quint64 predicateElementIndex;
+
+    for (predicateElementIndex = 0; predicateElementIndex < predicateElements_.size(); predicateElementIndex++)
+    {
+        if (predicateElements_.at(predicateElementIndex)->isQuery())
+        {
+            return true;
+        }
+
+    }
+
     return false;
+
+
+
 }
 
 QString Predicate::toString() const

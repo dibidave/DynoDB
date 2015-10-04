@@ -1260,6 +1260,20 @@ QList<quint32> DynoDB::processInternalQuery(Predicate* predicate)
 
     // Loop through all predicate elements and find the query one. If it's a subpredicate,
     // Process its query first. Otherwise, process it.
+    quint64 predicateElementIndex = 0;
+
+    for (;predicateElementIndex < predicate->getNumElements();predicateElementIndex++)
+    {
+        if (predicate->getElement(predicateElementIndex)->isPredicate())
+        {
+            internalQueryResults = processInternalQuery(predicate->getElement((predicateElementIndex)));
+        }
+        else if (predicate->getElement(predicateElementIndex)->isQuery)
+        {
+            //stuff
+        }
+    }
+
 
     // For loop predicate elements
         // If we find a subpredicate, then run processInternalQuery on it

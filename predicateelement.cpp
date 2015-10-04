@@ -119,11 +119,21 @@ bool PredicateElement::isSet() const
 
 bool PredicateElement::isQuery() const
 {
-    return isQuery_;
+    if (isPredicate_)
+    {
+        if (predicate_->isQuery())
+        {
+            return true;
+        }
+
+    }
+    else return isQuery_;
+
 }
 
 bool PredicateElement::isPredicate() const
 {
+
     return isPredicate_;
 }
 
